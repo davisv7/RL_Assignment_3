@@ -10,7 +10,7 @@ from gym import wrappers
 
 
 class GenericNetwork(nn.Module):
-    def __init__(self, learning_rate, input_dim, layer1_dim, layer2_dim, num_actions,optim):
+    def __init__(self, learning_rate, input_dim, layer1_dim, layer2_dim, num_actions):
         super(GenericNetwork, self).__init__()
         self.input_dim = input_dim
         self.layer1_dim = layer1_dim

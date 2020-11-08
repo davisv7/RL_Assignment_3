@@ -10,7 +10,7 @@ from gym import wrappers
 
 
 class GenericNetwork(nn.Module):
-    def __init__(self, learning_rate, input_dim, layer1_dim, layer2_dim, num_actions, optim):
+    def __init__(self, learning_rate, input_dim, layer1_dim, layer2_dim, num_actions):
         super(GenericNetwork, self).__init__()
         self.input_dim = input_dim
         self.layer1_dim = layer1_dim
@@ -91,7 +91,7 @@ def main():
     num_actions = env.action_space.n
     agent = Agent(alpha=0.001,
                   beta=0.001,
-                  input_dim=4,
+                  input_dim=8,
                   gamma=0.99,
                   num_actions=num_actions,
                   layer_1_size=128,
