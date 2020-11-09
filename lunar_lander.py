@@ -91,7 +91,7 @@ def main():
     num_actions = env.action_space.n
     agent = Agent(alpha=0.001,
                   beta=0.001,
-                  input_dim=4,
+                  input_dim=8,
                   gamma=0.99,
                   num_actions=num_actions,
                   layer_1_size=128,
@@ -111,5 +111,5 @@ def main():
         print(f"Episode: {i}, Score: {score}")
         score_history.append(score)
 
-
-main()
+if __name__ == '__main__':
+    main()

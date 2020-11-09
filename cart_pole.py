@@ -1,16 +1,18 @@
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+# import torch.optim as optim
+import torch_optimizer as optim
 import numpy as np
-
+from random import randint, sample
 import gym
-# import matplotlib as plt
+import matplotlib.pyplot as plt
 from gym import wrappers
+from collections import deque
 
 
 class GenericNetwork(nn.Module):
-    def __init__(self, learning_rate, input_dim, layer1_dim, layer2_dim, num_actions,optim):
+    def __init__(self, learning_rate, input_dim, layer1_dim, layer2_dim, num_actions, actor=True):
         super(GenericNetwork, self).__init__()
         self.input_dim = input_dim
         self.layer1_dim = layer1_dim
@@ -21,7 +23,10 @@ class GenericNetwork(nn.Module):
         self.input_layer = nn.Linear(self.input_dim, self.layer1_dim)
         self.layer1 = nn.Linear(self.layer1_dim, self.layer2_dim)
         self.output_layer = nn.Linear(self.layer2_dim, self.num_actions)
-        self.optimizer = optim.Adam(self.parameters(), lr=self.lr)  # TODO Actor Critic should use different optimizers
+        if actor:
+            self.optimizer = optim.RAdam(self.parameters(), lr=self.lr)  # either radam or yogi
+        else:
+            self.optimizer = optim.RAdam(self.parameters(), lr=self.lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu:0')
         self.to(self.device)
 
@@ -36,17 +41,20 @@ class GenericNetwork(nn.Module):
 
 
 class Agent(object):
-    def __init__(self, alpha, beta, input_dim, gamma, layer_1_size, layer_2_size, num_actions):
-        self.gamma = gamma
+    def __init__(self, env, alpha, beta, input_dim, gamma, layer_1_size, layer_2_size, num_actions):
+        self.env = env
+        self.batch_size = 50
+        self.obs_history = deque(maxlen=1000)
 
+        self.gamma = gamma
         self.log_probs = None
-        # policy is just a  prob dist
-        # updating the actor network with the gradient of the log of the polivcy
+        # policy is just a prob dist
+        # updating the actor network with the gradient of the log of the policy
         # taking the log of the prob dist,
-        # back propagating that to do los minimization
-        self.actor = GenericNetwork(alpha, input_dim, layer_1_size, layer_2_size, num_actions)
+        # back propagating that to do loss minimization
+        self.actor = GenericNetwork(alpha, input_dim, layer_1_size, layer_2_size, num_actions, actor=True)
         # attempts to approximate a policy and so it should have num action as output
-        self.critic = GenericNetwork(beta, input_dim, layer_1_size, layer_2_size, num_actions=1)
+        self.critic = GenericNetwork(beta, input_dim, layer_1_size, layer_2_size, num_actions=1, actor=False)
         # attempts to approximate q-value and so output should be 1
         # TODO: what happens if you have different structures for the networks?
 
@@ -81,28 +89,80 @@ class Agent(object):
 
         # back propagate
         (actor_loss + critic_loss).backward()
+        # (actor_loss + critic_loss).backward(retain_graph=True)
 
         self.critic.optimizer.step()
         self.actor.optimizer.step()
 
-
-def main():
-    agent = Agent(alpha=0.001, beta=0.001, input_dim=4, gamma=0.99, num_actions=2, layer_1_size=128, layer_2_size=128)
-    env = gym.make("CartPole-v1")
-    score_history = []
-    episodes = 2500
-    for i in range(episodes):
+    def do_training(self):
         done = False
         score = 0
-        current_state = env.reset()
+        current_state = self.env.reset()
         while not done:
-            action = agent.choose_action(current_state)
-            new_state, reward, done, _ = env.step(action)
+            action = self.choose_action(current_state)
+            new_state, reward, done, _ = self.env.step(action)
             score += reward
-            agent.learn(current_state, reward, new_state, int(done))
+            self.learn(current_state, reward, new_state, int(done))
+            self.obs_history.append((current_state, reward, new_state, done))
             current_state = new_state
+        # self.action_replay()
+        return score
+
+    def do_test(self):
+        score = 0
+        for i in range(10):
+            done = False
+            current_state = self.env.reset()
+            while not done:
+                action = self.choose_action(current_state)
+                new_state, reward, done, _ = self.env.step(action)
+                score += reward
+                current_state = new_state
+        return score / 10
+
+    def action_replay(self):
+        if len(self.obs_history) < self.batch_size:
+            return
+        else:
+            batch = sample(self.obs_history, self.batch_size)
+            for state, reward, new_state, done in batch:
+                self.learn(state, reward, new_state, done)
+
+
+def do_plotting(y1_values, y2_values):
+    plt.plot(y1_values)
+    plt.plot(y2_values)
+
+    # forward_average = [sum(y1_values[:i]) / i for i in range(1, len(y1_values) + 1)]
+    # plt.plot(forward_average)
+    plt.xlabel("Episodes")
+    plt.ylabel("Score")
+    plt.legend(["Learning Scores", "Average Test Scores"])
+    plt.show()
+
+
+def main():
+    env = gym.make("CartPole-v1")
+    agent = Agent(
+        env,
+        alpha=0.001,
+        beta=0.001,
+        input_dim=4,
+        gamma=0.99,
+        num_actions=2,
+        layer_1_size=256,
+        layer_2_size=256)
+    score_history = []
+    test_score_history = []
+    episodes = 300
+    for i in range(episodes):
+        score = agent.do_training()
+        test_score = agent.do_test()
         print(f"Episode: {i}, Score: {score}")
         score_history.append(score)
+        test_score_history.append(test_score)
+    do_plotting(score_history, test_score_history)
 
 
-main()
+if __name__ == '__main__':
+    main()
