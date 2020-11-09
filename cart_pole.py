@@ -1,8 +1,8 @@
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
-# import torch.optim as optim
-import torch_optimizer as optim
+import torch.optim as optim
+# import torch_optimizer as optim
 import numpy as np
 from random import randint, sample
 import gym
@@ -24,9 +24,9 @@ class GenericNetwork(nn.Module):
         self.layer1 = nn.Linear(self.layer1_dim, self.layer2_dim)
         self.output_layer = nn.Linear(self.layer2_dim, self.num_actions)
         if actor:
-            self.optimizer = optim.RAdam(self.parameters(), lr=self.lr)  # either radam or yogi
+            self.optimizer = optim.Adam(self.parameters(), lr=self.lr)  # either radam or yogi
         else:
-            self.optimizer = optim.RAdam(self.parameters(), lr=self.lr)
+            self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu:0')
         self.to(self.device)
 
@@ -85,7 +85,7 @@ class Agent(object):
 
         # modify probabilities in the direction that will maximize future reward
         actor_loss = -self.log_probs * delta
-        critic_loss = delta ** 2
+        critic_loss = (delta ** 2)
 
         # back propagate
         (actor_loss + critic_loss).backward()
@@ -109,16 +109,18 @@ class Agent(object):
         return score
 
     def do_test(self):
-        score = 0
+        scores = []
         for i in range(10):
             done = False
             current_state = self.env.reset()
+            total_reward = 0
             while not done:
                 action = self.choose_action(current_state)
                 new_state, reward, done, _ = self.env.step(action)
-                score += reward
                 current_state = new_state
-        return score / 10
+                total_reward += reward
+            scores.append(total_reward)
+        return min(scores)
 
     def action_replay(self):
         if len(self.obs_history) < self.batch_size:
@@ -129,15 +131,14 @@ class Agent(object):
                 self.learn(state, reward, new_state, done)
 
 
-def do_plotting(y1_values, y2_values):
-    plt.plot(y1_values)
-    plt.plot(y2_values)
-
+def do_plotting(agent_scores, performance_scores):
+    plt.plot(agent_scores)
+    plt.plot(performance_scores)
     # forward_average = [sum(y1_values[:i]) / i for i in range(1, len(y1_values) + 1)]
     # plt.plot(forward_average)
     plt.xlabel("Episodes")
     plt.ylabel("Score")
-    plt.legend(["Learning Scores", "Average Test Scores"])
+    plt.legend(["Learning Scores", "Minimum Test Scores"])
     plt.show()
 
 
@@ -148,20 +149,32 @@ def main():
         alpha=0.001,
         beta=0.001,
         input_dim=4,
-        gamma=0.99,
+        gamma=0.88,
         num_actions=2,
         layer_1_size=256,
         layer_2_size=256)
     score_history = []
     test_score_history = []
     episodes = 300
+    max_score = 0
+    max_score_episode = 0
     for i in range(episodes):
         score = agent.do_training()
         test_score = agent.do_test()
-        print(f"Episode: {i}, Score: {score}")
+        print(f"Episode: {i}, Score: {score} Test Score: {test_score}")
+        if test_score > max_score:
+            max_score = test_score
+            max_score_episode = i
+            T.save(agent.critic, "best_cartpole_actor.pt")
+            T.save(agent.actor, "best_cartpole_critic.pt")
+            print("saved new best model")
+            if test_score == 500:
+                print("saved THE best model")
+                break
         score_history.append(score)
         test_score_history.append(test_score)
     do_plotting(score_history, test_score_history)
+    print(f"Best Model found at episode {max_score_episode} with a Min. Test Score of {max_score}")
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ from collections import deque
 from functools import partial
 from statistics import mean
 
+
 # define an objective function
 def cart_pole_objective(env, strategy):
     # CartPole - 300 episodes until convergence.
@@ -15,7 +16,8 @@ def cart_pole_objective(env, strategy):
     beta = strategy["beta"]
     gamma = strategy["gamma"]
     num_actions = env.action_space.n
-    agent = CartPoleAgent(alpha=alpha,
+    agent = CartPoleAgent(env=env,
+                          alpha=alpha,
                           beta=beta,
                           input_dim=4,
                           gamma=gamma,
@@ -24,38 +26,42 @@ def cart_pole_objective(env, strategy):
                           layer_2_size=128)
     score_history = deque(maxlen=10)
     episodes = 310
+    min_performance = 0
     for i in range(episodes):
         done = False
-        score = 0
         current_state = env.reset()
         while not done:
             action = agent.choose_action(current_state)
             new_state, reward, done, _ = env.step(action)
-            score += reward
             agent.learn(current_state, reward, new_state, int(done))
+            min_performance = max(min_performance,agent.do_test())
             current_state = new_state
         # print(f"Episode: {i}, Score: {score}")
-        score_history.append(score)
-        if all([x > 195 for x in score_history]):
-            break
-    else:
+        if min_performance > 195:  # constraint according to assignment
+            return i
+            # lower -> better
+    else:  # no break
+        return 1000000 - min_performance
+        # forces the objective score of a failed set of params to have a score higher than one with a successful
+        # set of parameters. and one set of failed params led to better results
+        # than another set of failed params
 
-        return 1000000-mean(score_history)
-    # 0 <= x <= 310
-    return -i
+
+def main():
+    # define a search space
+    space = {
+        'alpha': hp.randint('alpha', 1, 256) / 10000,
+        'beta': hp.randint('beta', 1, 256) / 10000,
+        'gamma': hp.randint('gamma', 8192, 10000) / 10000,
+    }
+    # minimize the objective over the space
+    env = gym.make("CartPole-v1")
+    # make a partial so we can reuse the same environment
+    cart_pole_partial = partial(cart_pole_objective, env)
+    best_configuration = fmin(cart_pole_partial, space, algo=tpe.suggest, max_evals=100)
+
+    print(best_configuration)
 
 
-# define a search space
-# agent = Agent(alpha, beta, input_dim=4, gamma, num_actions=2, layer_1_size=128, layer_2_size=128)
-space = {
-    'alpha': hp.randint('alpha', 1, 256)/10000,
-    'beta': hp.randint('beta', 1, 256)/10000,
-    'gamma': hp.randint('gamma', 8192, 10000)/10000,
-}
-# minimize the objective over the space
-env = gym.make("CartPole-v1")
-# make a partial so we can reuse the same environment
-cart_pole_partial = partial(cart_pole_objective, env)
-best = fmin(cart_pole_partial, space, algo=tpe.suggest, max_evals=100)
-
-print(best)
+if __name__ == '__main__':
+    main()
