@@ -3,11 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 # import torch_optimizer as optim
-import numpy as np
-from random import randint, sample
+from random import sample
 import gym
 import matplotlib.pyplot as plt
-from gym import wrappers
 from collections import deque
 
 
