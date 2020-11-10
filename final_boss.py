@@ -2,6 +2,7 @@ from hyperopt import hp
 from hyperopt import fmin, tpe
 import gym
 from cart_pole import Agent as CartPoleAgent
+from cart_pole import Agent as LunarLanderAgent
 from collections import deque
 from functools import partial
 from statistics import mean
@@ -10,21 +11,22 @@ from statistics import mean
 def lunar_lander_objective(env, strategy):
     # 1500 time steps until convergence.  Here I have a looser definition of convergence.
     # For  me  that  is  just  receiving  on  average  greater  than  40  reward  per episode on average.
+    # average over 10 tests
     alpha = strategy["alpha"]
     beta = strategy["beta"]
     gamma = strategy["gamma"]
     num_actions = env.action_space.n
-    agent = CartPoleAgent(env=env,
-                          alpha=alpha,
-                          beta=beta,
-                          input_dim=4,
-                          gamma=gamma,
-                          num_actions=num_actions,
-                          layer_1_size=128,
-                          layer_2_size=128)
+    agent = LunarLanderAgent(env=env,
+                             alpha=alpha,
+                             beta=beta,
+                             input_dim=8,
+                             gamma=gamma,
+                             num_actions=num_actions,
+                             layer_1_size=128,
+                             layer_2_size=128)
     score_history = deque(maxlen=10)
-    episodes = 310
-    min_performance = -float("inf")
+    episodes = 1510
+    avg_performance = -float("inf")
     for i in range(episodes):
         done = False
         current_state = env.reset()
@@ -32,8 +34,16 @@ def lunar_lander_objective(env, strategy):
             action = agent.choose_action(current_state)
             new_state, reward, done, _ = env.step(action)
             agent.learn(current_state, reward, new_state, int(done))
-            min_performance = max(min_performance, agent.do_test())
+            avg_performance = max(avg_performance, mean(agent.do_test()))
             current_state = new_state
+        if avg_performance > 40:  # constraint according to assignment
+            return i
+        # lower -> better
+    else:  # no break
+        return 1000000 - avg_performance
+        # forces the objective score of a failed set of params to have a score higher than one with a successful
+        # set of parameters. and one set of failed params leads to better results
+        # than another set of failed params
 
 
 # define an objective function
@@ -63,7 +73,7 @@ def cart_pole_objective(env, strategy):
             action = agent.choose_action(current_state)
             new_state, reward, done, _ = env.step(action)
             agent.learn(current_state, reward, new_state, int(done))
-            min_performance = max(min_performance, agent.do_test())
+            min_performance = max(min_performance, min(agent.do_test()))
             current_state = new_state
         # print(f"Episode: {i}, Score: {score}")
         if min_performance > 195:  # constraint according to assignment
@@ -72,7 +82,7 @@ def cart_pole_objective(env, strategy):
     else:  # no break
         return 1000000 - min_performance
         # forces the objective score of a failed set of params to have a score higher than one with a successful
-        # set of parameters. and one set of failed params led to better results
+        # set of parameters. and one set of failed params leads to better results
         # than another set of failed params
 
 
@@ -110,3 +120,4 @@ def minimize_lunarlander():
 
 if __name__ == '__main__':
     minimize_lunarlander()
+    # minimize_cartpole()
