@@ -111,5 +111,5 @@ def main():
         print(f"Episode: {i}, Score: {score}")
         score_history.append(score)
 
-
-main()
+if __name__ == '__main__':
+    main()
