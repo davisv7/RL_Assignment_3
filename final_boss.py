@@ -8,9 +8,8 @@ from statistics import mean
 
 
 def lunar_lander_objective(env, strategy):
-    # CartPole - 300 episodes until convergence.
-    # Convergence is defined in this environment as consistently receiving greater than 195 reward.
-    # I will define consistently as 10 times in a row.
+    # 1500 time steps until convergence.  Here I have a looser definition of convergence.
+    # For  me  that  is  just  receiving  on  average  greater  than  40  reward  per episode on average.
     alpha = strategy["alpha"]
     beta = strategy["beta"]
     gamma = strategy["gamma"]
@@ -24,7 +23,7 @@ def lunar_lander_objective(env, strategy):
                           layer_1_size=128,
                           layer_2_size=128)
     score_history = deque(maxlen=10)
-    episodes =310
+    episodes = 310
     min_performance = -float("inf")
     for i in range(episodes):
         done = False
@@ -35,7 +34,6 @@ def lunar_lander_objective(env, strategy):
             agent.learn(current_state, reward, new_state, int(done))
             min_performance = max(min_performance, agent.do_test())
             current_state = new_state
-
 
 
 # define an objective function
