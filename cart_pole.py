@@ -11,7 +11,7 @@ def main():
         alpha=0.001,
         beta=0.001,
         input_dim=4,
-        gamma=0.88,
+        gamma=0.90,
         num_actions=2,
         layer_1_size=256,
         layer_2_size=256)
@@ -24,6 +24,8 @@ def main():
         score = agent.do_training()
         test_score = min(agent.do_test())
         print(f"Episode: {i}, Score: {score} Test Score: {test_score}")
+        score_history.append(score)
+        test_score_history.append(test_score)
         if test_score > max_score:
             max_score = test_score
             max_score_episode = i
@@ -33,8 +35,6 @@ def main():
             if test_score == 500:
                 print("saved THE best model")
                 break
-        score_history.append(score)
-        test_score_history.append(test_score)
     do_plotting(score_history, test_score_history)
     print(f"Best Model found at episode {max_score_episode} with a Min. Test Score of {max_score}")
 

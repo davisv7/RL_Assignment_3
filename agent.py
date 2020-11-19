@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class Agent(object):
     def __init__(self, env, alpha, beta, input_dim, gamma, layer_1_size, layer_2_size, num_actions):
-        self.env = env
+        self.env = env #TODO: Use action_space.n in place of num_actions
         self.batch_size = 50
         self.obs_history = deque(maxlen=1000)
 
@@ -47,12 +47,13 @@ class Agent(object):
 
         # Take Temporal Difference Error
         delta = reward + self.gamma * critic_value_s_prime * (1 - int(done)) - critic_value_s
-
         # modify probabilities in the direction that will maximize future reward
         actor_loss = -self.log_probs * delta
         critic_loss = (delta ** 2)
 
         # back propagate
+        # (actor_loss).backward(retain_graph=True)
+        # (critic_loss).backward()
         (actor_loss + critic_loss).backward()
         # (actor_loss + critic_loss).backward(retain_graph=True)
 

@@ -40,14 +40,14 @@ def lunar_lander_objective(env, strategy):
             return i
         # lower -> better
     else:  # no break
-        return 1000000 - avg_performance
+        return 10000 - avg_performance
         # forces the objective score of a failed set of params to have a score higher than one with a successful
         # set of parameters. and one set of failed params leads to better results
         # than another set of failed params
 
 
 # define an objective function
-def cart_pole_objective(env, strategy):
+def cart_pole_objective(strategy, env):
     # CartPole - 300 episodes until convergence.
     # Convergence is defined in this environment as consistently receiving greater than 195 reward.
     # I will define consistently as 10 times in a row.
@@ -63,7 +63,6 @@ def cart_pole_objective(env, strategy):
                           num_actions=num_actions,
                           layer_1_size=128,
                           layer_2_size=128)
-    score_history = deque(maxlen=10)
     episodes = 310
     min_performance = 0
     for i in range(episodes):
@@ -80,24 +79,25 @@ def cart_pole_objective(env, strategy):
             return i
             # lower -> better
     else:  # no break
-        return 1000000 - min_performance
+        return 1000 - min_performance
         # forces the objective score of a failed set of params to have a score higher than one with a successful
-        # set of parameters. and one set of failed params leads to better results
-        # than another set of failed params
+        # set of parameters. while still keeping sets of failed parameters comparable
 
 
 def minimize_cartpole():
     # define a search space
     space = {
-        'alpha': hp.randint('alpha', 1, 256) / 10000,
-        'beta': hp.randint('beta', 1, 256) / 10000,
-        'gamma': hp.randint('gamma', 8192, 10000) / 10000,
+        'alpha': hp.randint('alpha', 1, 128) / 10000,  # alpha and beta between 0.0001 and 0.0256
+        'beta': hp.randint('beta', 1, 128) / 10000,
+        'gamma': hp.randint('gamma', 8192, 10000) / 10000,  # discount factor between .8192 and 1.0
     }
+
     # minimize the objective over the space
-    env = gym.make("CartPole-v1")
-    # make a partial so we can reuse the same environment
-    cart_pole_partial = partial(cart_pole_objective, env)
-    best_configuration = fmin(cart_pole_partial, space, algo=tpe.suggest, max_evals=100)
+    def _objective(strategy):
+        env = gym.make("CartPole-v1")
+        return cart_pole_objective(strategy, env)
+
+    best_configuration = fmin(_objective, space, algo=tpe.suggest, max_evals=100)
 
     print(best_configuration)
 
@@ -105,19 +105,21 @@ def minimize_cartpole():
 def minimize_lunarlander():
     # define a search space
     space = {
-        'alpha': hp.randint('alpha', 1, 256) / 10000,
-        'beta': hp.randint('beta', 1, 256) / 10000,
+        'alpha': hp.randint('alpha', 1, 128) / 10000,
+        'beta': hp.randint('beta', 1, 128) / 10000,
         'gamma': hp.randint('gamma', 8192, 10000) / 10000,
     }
+
     # minimize the objective over the space
-    env = gym.make('LunarLander-v2')
-    # make a partial so we can reuse the same environment
-    lunar_landar_partial = partial(lunar_lander_objective, env)
-    best_configuration = fmin(lunar_landar_partial, space, algo=tpe.suggest, max_evals=100)
+    def _objective(strategy):
+        env = gym.make("CartPole-v1")
+        return cart_pole_objective(strategy, env)
+
+    best_configuration = fmin(_objective, space, algo=tpe.suggest, max_evals=100)
 
     print(best_configuration)
 
 
 if __name__ == '__main__':
-    minimize_lunarlander()
-    # minimize_cartpole()
+    # minimize_lunarlander()
+    minimize_cartpole()
