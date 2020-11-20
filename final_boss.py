@@ -8,7 +8,7 @@ from functools import partial
 from statistics import mean
 
 
-def lunar_lander_objective(env, strategy):
+def lunar_lander_objective(strategy, env):
     # 1500 time steps until convergence.  Here I have a looser definition of convergence.
     # For  me  that  is  just  receiving  on  average  greater  than  40  reward  per episode on average.
     # average over 10 tests
@@ -112,8 +112,8 @@ def minimize_lunarlander():
 
     # minimize the objective over the space
     def _objective(strategy):
-        env = gym.make("CartPole-v1")
-        return cart_pole_objective(strategy, env)
+        env = gym.make("LunarLander-v2")
+        return lunar_lander_objective(strategy, env)
 
     best_configuration = fmin(_objective, space, algo=tpe.suggest, max_evals=100)
 
@@ -121,5 +121,5 @@ def minimize_lunarlander():
 
 
 if __name__ == '__main__':
-    # minimize_lunarlander()
-    minimize_cartpole()
+    minimize_lunarlander()
+    #minimize_cartpole()
