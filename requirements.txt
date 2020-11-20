@@ -1,2 +1,5 @@
 numpy
-torch
+gym
+Box2D
+matplotlib
+hyperopt
