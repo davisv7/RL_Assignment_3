@@ -24,20 +24,20 @@ def main():
     for i in range(episodes):
         score = agent.do_training()
         test_score = mean(agent.do_test())
-        print(f"Episode: {i}, Score: {score} Test Score: {test_score}")
+        print(f"Episode: {i}, Score: {score} Mean Test Score: {test_score}")
+        score_history.append(score)
+        test_score_history.append(test_score)
         if test_score > max_score:
             max_score = test_score
             max_score_episode = i
             T.save(agent.critic, "best_lander_actor.pt")
             T.save(agent.actor, "best_lander_critic.pt")
             print("saved new best model")
-            if test_score == 500:
-                print("saved THE best model")
+            if test_score > 40:
+                print("convergence condition met")
                 break
-        score_history.append(score)
-        test_score_history.append(test_score)
     do_plotting(score_history, test_score_history)
-    print(f"Best Model found at episode {max_score_episode} with a Min. Test Score of {max_score}")
+    print(f"Best Model found at episode {max_score_episode} with a Mean. Test Score of {max_score}")
 
 
 
